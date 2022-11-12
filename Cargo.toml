@@ -1,0 +1,32 @@
+[package]
+name = "galaxyos"
+version = "0.1.0"
+authors = ["Krzysztof Stefańczyk <krzys.stefanczyk@gmail.com>"]
+edition = "2021"
+license = "MIT"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/kernel/main.rs"
+
+[dependencies]
+volatile = "0.3"
+spin = "0.9"
+multiboot2 = "0.7"
+bitflags = "1.3"
+x86_64 = "0.14"
+linked_list_allocator = "0.10"
+once = "0.3"
+bit_field = "0.10"
+pic8259 = "0.10"
+pc-keyboard = "0.6"
+
+[dependencies.lazy_static]
+version = "1.4"
+features = ["spin_no_std"]
