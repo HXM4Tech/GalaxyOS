@@ -52,7 +52,7 @@ def make_bootcode():
             raise BuildError(exit_code)
 
 def make_kernel():
-    cmd = f"RUST_TARGET_PATH=\"{SELFPATH}\" {_CARGO_BANARY} build --manifest-path {os.path.join(SELFPATH, 'Cargo.toml')} --target-dir \"{OUTPUTS}\" -r"
+    cmd = f"RUST_TARGET_PATH=\"{SELFPATH}\" {_CARGO_BANARY} build --manifest-path \"{os.path.join(SELFPATH, 'Cargo.toml')}\" --target-dir \"{OUTPUTS}\" -r"
     print(f"$ {cmd}")
     exit_code = os.system(cmd)
     try:
