@@ -156,14 +156,14 @@ pub struct InactivePageTable {
 
 impl InactivePageTable {
     pub fn new(frame: Frame, active_table: &mut ActivePageTable, temporary_page: &mut TemporaryPage) -> InactivePageTable {
-    {
-        let table = temporary_page.map_table_frame(frame.clone(), active_table);
-        table.zero();
-        table[511].set(frame.clone(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
-    }
-    temporary_page.unmap(active_table);
+        {
+            let table = temporary_page.map_table_frame(frame.clone(), active_table);
+            table.zero();
+            table[511].set(frame.clone(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
+        }
+        temporary_page.unmap(active_table);
 
-    return InactivePageTable { p4_frame: frame };
+        return InactivePageTable { p4_frame: frame };
     }
 }
 
@@ -184,7 +184,6 @@ pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation) -> Ac
                 continue;
             }
 
-            println_all!("mapping section at addr: {:#x}, size: {:#x}", section.start_address(), section.size());
             assert!(section.start_address() as usize % PAGE_SIZE == 0, "Section is not page aligned");
         
             let flags = EntryFlags::from_elf_section_flags(&section);
@@ -207,13 +206,10 @@ pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation) -> Ac
     });
 
     let old_table = active_table.switch(new_table);
-    println_all!("Switched table!");
 
     // turn the old p4 page into a guard page
     let old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
     active_table.unmap(old_p4_page, allocator);
-
-    println_all!("guard page at {:#x}", old_p4_page.start_address());
 
     return active_table;
 }

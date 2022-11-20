@@ -22,9 +22,6 @@ pub fn init(boot_info: BootInformation) -> MemoryController {
     let kernel_start = elf_sections_tag.sections().map(|s| s.start_address()).min().unwrap();
     let kernel_end = elf_sections_tag.sections().map(|s| s.end_address()).max().unwrap();
 
-    println_all!("kernel start: {:#x}, kernel end: {:#x}", kernel_start, kernel_end);
-    println_all!("multiboot start: {:#x}, multiboot end: {:#x}", boot_info.start_address(), boot_info.end_address());
-
     let mut frame_allocator = AreaFrameAllocator::new(
         kernel_start as usize, kernel_end as usize, boot_info.start_address(),
         boot_info.end_address(), memory_map_tag.memory_areas()

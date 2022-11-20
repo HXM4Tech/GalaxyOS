@@ -77,7 +77,6 @@ pub fn init(memory_controller: &mut MemoryController) {
         gdt
     });
 
-    println_all!("loading GDT");
     gdt.load();
 
     unsafe {
@@ -85,14 +84,12 @@ pub fn init(memory_controller: &mut MemoryController) {
         load_tss(tss_selector);
     }
 
-    println_all!("loading IDT");
     IDT.load();
 
     unsafe {
         PICS.lock().initialize();
     }
 
-    println_all!("configuring PIT");
     timer::configure_pit();
 
     x86_64::instructions::interrupts::enable();
@@ -118,8 +115,9 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame)
 {
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+    use pc_keyboard::{layouts, HandleControl, Keyboard, ScancodeSet1};
     use x86_64::instructions::port::Port;
+    use crate::console;
 
     lazy_static! {
         static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = Mutex::new(
@@ -133,10 +131,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     let scancode: u8 = unsafe { port.read() };
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => print_all!("{}", character),
-                DecodedKey::RawKey(_key) => (),
-            }
+            console::register_input(key);
         }
     }
 

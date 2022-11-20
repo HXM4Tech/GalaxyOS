@@ -30,7 +30,6 @@ mod timer;
 fn _panic(info: &PanicInfo) -> ! {
     x86_64::instructions::interrupts::disable();
 
-    console::set_color_all(console::Color::LightRed, console::Color::Black);
     println_all!("\n---[Kernel Panic: {}, at {}", info.message().unwrap(), info.location().unwrap());
 
     loop {
@@ -40,8 +39,6 @@ fn _panic(info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start(multiboot_info_addr: usize) {
-    drivers::vga_textmode::clear_screen();
-
     let boot_info = unsafe { multiboot2::load(multiboot_info_addr) };
 
     let cmd_tag = boot_info.command_line_tag();
@@ -53,18 +50,17 @@ pub extern "C" fn _start(multiboot_info_addr: usize) {
         cmd = "";
     }
 
-    console::set_color_all(console::Color::LightGreen, console::Color::Black);
-    println_all!("GalaxyOS v{}", "0.1.0");
-    println_all!("Command line: {}", cmd);
-    console::set_color_all(console::Color::LightGray, console::Color::Black);
-
     let mut memory_controller = memory::init(boot_info);
     interrupts::init(&mut memory_controller);
-    
+    console::init();
+
+    println_all!("\x1b[1;32mGalaxyOS v{}", env!("CARGO_PKG_VERSION"));
+    println_all!("Command line: {}\x1b[0m", cmd);
+
     loop {
-        console::set_color_all(console::Color::LightMagenta, console::Color::Black);
-        println_all!("\nUPTIME: {}s", timer::get_uptime() / 1000);
-        console::set_color_all(console::Color::LightGray, console::Color::Black);
+        print_all!("\n\x1b[1;35m");
+        println_all!("UPTIME: {}s", timer::get_uptime() / 1000);
+        print_all!("\x1b[0m");
         timer::sleep(10000);
     }
 }

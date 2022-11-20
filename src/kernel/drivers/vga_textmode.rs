@@ -2,7 +2,6 @@
 // Displayed characters are encoded in code page 437. 
 
 use volatile::Volatile;
-use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::instructions::port::Port;
@@ -26,14 +25,16 @@ struct ScreenChar {
     color_code: ColorCode,
 }
 
-const BUFFER_HEIGHT: usize = 25;
-const BUFFER_WIDTH: usize = 80;
+pub const BUFFER_HEIGHT: usize = 25;
+pub const BUFFER_WIDTH: usize = 80;
 
 #[repr(transparent)]
 struct Buffer {
     chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
+// Writer is no longer needed here, so we should remove it in the future
+//   making the printing and moving cursor functionality functions only.
 pub struct Writer {
     column_position: usize,
     row_position: usize,
@@ -45,6 +46,7 @@ impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
+            0x08 => self.backspace(),
             byte => {
                 if self.column_position >= BUFFER_WIDTH {
                     self.new_line();
@@ -66,12 +68,6 @@ impl Writer {
                     self.move_cursor(self.row_position, self.column_position);
                 }
             }
-        }
-    }
-
-    pub fn write_string(&mut self, s: &str) {
-        for byte in s.bytes() {
-            self.write_byte(byte);
         }
     }
 
@@ -115,6 +111,25 @@ impl Writer {
         self.move_cursor(0, 0);
     }
 
+    fn backspace(&mut self) {
+        if self.column_position > 0 {
+            self.column_position -= 1;
+            self.buffer.chars[self.row_position][self.column_position].write(ScreenChar {
+                ascii_character: b' ',
+                color_code: self.color_code,
+            });
+        } else if self.row_position > 0 {
+            self.row_position -= 1;
+            self.column_position = BUFFER_WIDTH - 1;
+            self.buffer.chars[self.row_position][self.column_position].write(ScreenChar {
+                ascii_character: b' ',
+                color_code: self.color_code,
+            });
+        }
+        
+        self.move_cursor(self.row_position, self.column_position);
+    }
+
     fn move_cursor(&mut self, row: usize, col: usize) {
         let pos = row * BUFFER_WIDTH + col;
 
@@ -130,13 +145,6 @@ impl Writer {
     }
 }
 
-impl fmt::Write for Writer {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.write_string(s);
-        Ok(())
-    }
-}
-
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
@@ -146,31 +154,51 @@ lazy_static! {
     });
 }
 
-#[doc(hidden)]
-pub fn _print(args: fmt::Arguments) {
-    use core::fmt::Write;
-    use x86_64::instructions::interrupts;
-    interrupts::without_interrupts(|| {
-        WRITER.lock().write_fmt(args).unwrap();
-    });
-}
-
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::drivers::vga_textmode::_print(format_args!($($arg)*)));
-}
-
-#[macro_export]
-macro_rules! println {
-    () => ($crate::drivers::vga_textmode::print!("\n"));
-    ($($arg:tt)*) => ($crate::drivers::vga_textmode::print!("{}\n", format_args!($($arg)*)));
-}
-
-pub(crate) use print;
-pub(crate) use println;
-
 pub fn set_color(fg: Color, bg: Color) {
     WRITER.lock().color_code = ColorCode::new(fg, bg);
+}
+
+pub fn get_current_color() -> (Color, Color) {
+    let color_code = WRITER.lock().color_code;
+    let fg = match color_code.0 & 0x0f {
+        0 => Color::Black,
+        1 => Color::Blue,
+        2 => Color::Green,
+        3 => Color::Cyan,
+        4 => Color::Red,
+        5 => Color::Magenta,
+        6 => Color::Brown,
+        7 => Color::LightGray,
+        8 => Color::DarkGray,
+        9 => Color::LightBlue,
+        10 => Color::LightGreen,
+        11 => Color::LightCyan,
+        12 => Color::LightRed,
+        13 => Color::LightMagenta,
+        14 => Color::Yellow,
+        15 => Color::White,
+        _ => Color::Black,
+    };
+    let bg = match (color_code.0 & 0xf0) >> 4 {
+        0 => Color::Black,
+        1 => Color::Blue,
+        2 => Color::Green,
+        3 => Color::Cyan,
+        4 => Color::Red,
+        5 => Color::Magenta,
+        6 => Color::Brown,
+        7 => Color::LightGray,
+        8 => Color::DarkGray,
+        9 => Color::LightBlue,
+        10 => Color::LightGreen,
+        11 => Color::LightCyan,
+        12 => Color::LightRed,
+        13 => Color::LightMagenta,
+        14 => Color::Yellow,
+        15 => Color::White,
+        _ => Color::Black,
+    };
+    return (fg, bg);
 }
 
 pub fn clear_screen() {
@@ -187,4 +215,8 @@ pub fn set_cursor_position(row: usize, col: usize) {
 pub fn get_cursor_position() -> (usize, usize) {
     let writer = WRITER.lock();
     return (writer.row_position, writer.column_position);
+}
+
+pub fn raw_print_char(c: char) {
+    WRITER.lock().write_byte(c as u8);
 }
