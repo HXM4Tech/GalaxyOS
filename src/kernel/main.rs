@@ -15,6 +15,7 @@ extern crate alloc;
 extern crate bit_field;
 extern crate pic8259;
 extern crate pc_keyboard;
+extern crate x86;
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate once;
 
@@ -30,7 +31,7 @@ mod timer;
 fn _panic(info: &PanicInfo) -> ! {
     x86_64::instructions::interrupts::disable();
 
-    println_all!("\n---[Kernel Panic: {}, at {}", info.message().unwrap(), info.location().unwrap());
+    println_all!("\n\x1b[1;31m---[Kernel Panic: {}, at {}", info.message().unwrap(), info.location().unwrap());
 
     loop {
         x86_64::instructions::hlt();
@@ -55,7 +56,10 @@ pub extern "C" fn _start(multiboot_info_addr: usize) {
     console::init();
 
     println_all!("\x1b[1;32mGalaxyOS v{}", env!("CARGO_PKG_VERSION"));
-    println_all!("Command line: {}\x1b[0m", cmd);
+    println_all!("Command line: {}", cmd);
+
+    let processor = drivers::cpuid::get_processor_info();
+    println_all!("\x1b[1;36mCPU: {:#?}", processor);
 
     loop {
         print_all!("\n\x1b[1;35m");

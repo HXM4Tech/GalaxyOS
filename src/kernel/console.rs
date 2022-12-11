@@ -49,12 +49,12 @@ pub struct Console {
 }
 
 
-// TODO: Separate stdout, stderr and stdin
+// TODO: Separate stdout, stderr and stdin (this will be made after implementing multitasking and file descriptors)
 // TODO: Add support for more ANSI escape sequences
 // TODO: Fix the backspace
 impl Console {
     pub fn new(width: usize, height: usize, print_func: fn(char), set_color_func: fn(Color, Color), get_current_color_func: fn() -> (Color, Color), clear_func: fn(), set_cursor_pos_func: fn(usize, usize), get_cursor_pos_func: fn() -> (usize, usize)) -> Console {
-        Console {
+        return Console {
             width,
             height,
             print_func,
@@ -68,7 +68,7 @@ impl Console {
             in_ansi: false,
             in_escape_seq: false,
             escape_seq: Vec::new(),
-        }
+        };
     }
 
     pub fn print(&mut self, s: &str) {
